@@ -123,7 +123,7 @@ function loginAndAcquireToken(successCallback) {
         }
       }, error => {
         if (error) {
-          localMsalApp.acquireTokenRedirect(appConfig.scopes);
+          localMsalApp.loginRedirect(appConfig.scopes);
         }
       });
     }
