@@ -1,6 +1,6 @@
 {
-  "name": "@kdpw/msal-b2c-react",
-  "version": "0.0.3",
+  "name": "@gillerg8/msal-b2c-react",
+  "version": "1.0.0",
   "description": "React wrapper over MS Authentication library for Azure AD B2C",
   "main": "lib/msal-b2c-react.js",
   "scripts": {
@@ -30,7 +30,7 @@
   },
   "homepage": "https://github.com/leszekczajka/msal-b2c-react#readme",
   "dependencies": {
-    "msal": "^0.2.3"
+    "msal": "^1.4.4"
   },
   "peerDependencies": {
     "react": "^15.0.0 || ^16.0.0"
