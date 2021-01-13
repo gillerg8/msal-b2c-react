@@ -5,6 +5,8 @@ import * as Msal from 'msal';
 import { PublicClientApplication } from '@azure/msal-browser';
 import React from 'react';
 
+let localMsalApp = null;
+
 const logger = new Msal.Logger(loggerCallback, {
 	level: Msal.LogLevel.Warning,
 });
@@ -54,7 +56,6 @@ function authCallback(errorDesc, token, error, tokenType) {
 }
 
 function redirect() {
-	const localMsalApp = window.msal;
 	const instance = appConfig.instance
 		? appConfig.instance
 		: 'https://login.microsoftonline.com/tfp/';
@@ -64,7 +65,7 @@ function redirect() {
 }
 
 function loginAndAcquireToken(successCallback) {
-	const localMsalApp = window.msal;
+	console.log('localMsalApp', localMsalApp);
 
 	let user = localMsalApp.getUser(appConfig.scopes);
 
@@ -182,29 +183,12 @@ const authentication = {
 			},
 		};
 
-		const localMsalApp = new PublicClientApplication(msalConfig);
-		console.log('localMsalApp', localMsalApp);
-		// new Msal.UserAgentApplication(
-		// 	config.applicationId,
-		// 	authority,
-		// 	authCallback,
-		// 	{
-		// 		logger: logger,
-		// 		cacheLocation: config.cacheLocation,
-		// 		postLogoutRedirectUri: config.postLogoutRedirectUri,
-		// 		redirectUri: config.redirectUri,
-		// 		validateAuthority: validateAuthority,
-		// 	}
-		// );
+		new PublicClientApplication(msalConfig);
 	},
 	run: (launchApp, errorApp) => {
 		state.launchApp = launchApp;
 		if (errorApp) state.errorApp = errorApp;
-		if (
-			!window.msal.isCallback(window.location.hash) &&
-			window.parent === window &&
-			!window.opener
-		) {
+		if (window.parent === window && !window.opener) {
 			loginAndAcquireToken();
 		}
 	},
@@ -236,7 +220,7 @@ const authentication = {
 		};
 	},
 	signOut: () => {
-		window.msal.logout();
+		localMsalApp.logout();
 	},
 	getIdToken: () => {
 		return state.idToken;
