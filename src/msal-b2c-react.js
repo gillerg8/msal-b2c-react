@@ -2,10 +2,7 @@
 // as the constructor for this class will make callbacks to the acquireToken function and these occur before
 // any local assignment can take place. Not nice but its how it works.
 import * as Msal from 'msal';
-import { PublicClientApplication } from '@azure/msal-browser';
 import React from 'react';
-
-let localMsalApp = null;
 
 const logger = new Msal.Logger(loggerCallback, {
 	level: Msal.LogLevel.Warning,
@@ -56,6 +53,7 @@ function authCallback(errorDesc, token, error, tokenType) {
 }
 
 function redirect() {
+	const localMsalApp = window.msal;
 	const instance = appConfig.instance
 		? appConfig.instance
 		: 'https://login.microsoftonline.com/tfp/';
@@ -65,9 +63,8 @@ function redirect() {
 }
 
 function loginAndAcquireToken(successCallback) {
-	console.log('localMsalApp', localMsalApp);
-
-	let user = localMsalApp.getUser(appConfig.scopes);
+	const localMsalApp = window.msal;
+	let user = localMsalApp.getAccount(appConfig.scopes);
 
 	if (!user) {
 		// user is not logged in
@@ -91,7 +88,7 @@ function loginAndAcquireToken(successCallback) {
 				.then(
 					(accessToken) => {
 						state.accessToken = accessToken;
-						user = localMsalApp.getUser(appConfig.scopes);
+						user = localMsalApp.getAccount(appConfig.scopes);
 						state.idToken = user.idToken;
 						state.userName = user.name;
 						if (state.launchApp) {
@@ -161,34 +158,27 @@ const authentication = {
 		}
 		state.scopes = scopes;
 
-		var msalConfig = {
-			auth: {
-				clientId: config.applicationId,
-				authority: authority,
-				knownAuthorities: [],
-				cloudDiscoveryMetadata: '',
-				redirectUri: config.redirectUri,
-				navigateToLoginRequestUrl: true,
-				clientCapabilities: ['CP1'],
-			},
-			cache: {
+		new Msal.UserAgentApplication(
+			config.applicationId,
+			authority,
+			authCallback,
+			{
+				logger: logger,
 				cacheLocation: config.cacheLocation,
-				storeAuthStateInCookie: false,
-			},
-			system: {
-				windowHashTimeout: 60000,
-				iframeHashTimeout: 6000,
-				loadFrameTimeout: 0,
-				asyncPopups: false,
-			},
-		};
-
-		new PublicClientApplication(msalConfig);
+				postLogoutRedirectUri: config.postLogoutRedirectUri,
+				redirectUri: config.redirectUri,
+				validateAuthority: validateAuthority,
+			}
+		);
 	},
 	run: (launchApp, errorApp) => {
 		state.launchApp = launchApp;
 		if (errorApp) state.errorApp = errorApp;
-		if (window.parent === window && !window.opener) {
+		if (
+			!window.msal.isCallback(window.location.hash) &&
+			window.parent === window &&
+			!window.opener
+		) {
 			loginAndAcquireToken();
 		}
 	},
@@ -220,7 +210,7 @@ const authentication = {
 		};
 	},
 	signOut: () => {
-		localMsalApp.logout();
+		window.msal.logout();
 	},
 	getIdToken: () => {
 		return state.idToken;
