@@ -1,6 +1,6 @@
 {
-  "name": "@gillerg8/msal-b2c-react",
-  "version": "1.0.0",
+  "name": "ad-b2c-react",
+  "version": "1.0.1",
   "description": "React wrapper over MS Authentication library for Azure AD B2C",
   "main": "lib/msal-b2c-react.js",
   "scripts": {
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/leszekczajka/msal-b2c-react.git"
+    "url": "git+https://github.com/gillerg8/msal-b2c-react.git"
   },
   "keywords": [
     "react",
@@ -22,14 +22,16 @@
   ],
   "author": "James Randall",
   "contributors": [
-    "Leszek Czajka <leszek.czajka@gmail.com>"
+    "Leszek Czajka <leszek.czajka@gmail.com>",
+    "Geoff Giller <gillerg8@gmail.com>"
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/leszekczajka/msal-b2c-react/issues"
+    "url": "https://github.com/gillerg8/msal-b2c-react/issues"
   },
-  "homepage": "https://github.com/leszekczajka/msal-b2c-react#readme",
+  "homepage": "https://github.com/gillerg8/msal-b2c-react#readme",
   "dependencies": {
+    "@azure/msal-browser": "^2.9.0",
     "msal": "^1.4.4"
   },
   "peerDependencies": {
