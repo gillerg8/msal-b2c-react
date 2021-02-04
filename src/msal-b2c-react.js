@@ -64,15 +64,10 @@ function redirect() {
 
 function loginAndAcquireToken(successCallback) {
 	const localMsalApp = window.msal;
-	const scopes = [...appConfig.scopes, 'openid', 'profile'];
-	let account = localMsalApp.getAccount();
+	let user = localMsalApp.getUser(appConfig.scopes);
 
-	console.log('account', account);
-	console.log('appConfig', appConfig);
-	console.log('scopes', scopes);
-
-	if (!account) {
-		// account is not logged in
+	if (!user) {
+		// user is not logged in
 		if (state.noScopes) {
 			// no need of access token
 			if (appConfig.silentLoginOnly) {
@@ -80,23 +75,22 @@ function loginAndAcquireToken(successCallback) {
 				if (state.errorApp) state.errorApp();
 			}
 			// just redirect to login page
-			else
-				localMsalApp.loginRedirect({
-					scopes: scopes,
-				});
+			else localMsalApp.loginRedirect(appConfig.scopes);
 		} else {
 			// try to get token from SSO session
 			localMsalApp
-				.acquireTokenSilent({
-					scopes: scopes,
-				})
+				.acquireTokenSilent(
+					appConfig.scopes,
+					null,
+					null,
+					'&login_hint&domain_hint=organizations'
+				)
 				.then(
 					(accessToken) => {
-						console.log('accessToken', accessToken);
 						state.accessToken = accessToken;
-						account = localMsalApp.getAccount();
-						state.idToken = account.idToken;
-						state.userName = account.name;
+						user = localMsalApp.getUser(appConfig.scopes);
+						state.idToken = user.idToken;
+						state.userName = user.name;
 						if (state.launchApp) {
 							state.launchApp();
 						}
@@ -107,18 +101,15 @@ function loginAndAcquireToken(successCallback) {
 					(error) => {
 						if (error) {
 							if (appConfig.silentLoginOnly) state.errorApp();
-							else
-								localMsalApp.loginRedirect({
-									scopes: scopes,
-								});
+							else localMsalApp.loginRedirect(appConfig.scopes);
 						}
 					}
 				);
 		}
 	} else {
 		// the user is already logged in
-		state.idToken = account.idToken;
-		state.userName = account.name;
+		state.idToken = user.idToken;
+		state.userName = user.name;
 		if (state.noScopes) {
 			// no need of access token, just launch the app
 			if (state.launchApp) {
@@ -129,40 +120,35 @@ function loginAndAcquireToken(successCallback) {
 			}
 		} else {
 			// get access token
-			localMsalApp
-				.acquireTokenSilent({
-					scopes: scopes,
-				})
-				.then(
-					(accessToken) => {
-						state.accessToken = accessToken;
-						if (state.launchApp) {
-							state.launchApp();
-						}
-						if (successCallback) {
-							successCallback();
-						}
-					},
-					(error) => {
-						if (error) {
-							localMsalApp.loginRedirect({
-								scopes: scopes,
-							});
-						}
+			localMsalApp.acquireTokenSilent(appConfig.scopes).then(
+				(accessToken) => {
+					state.accessToken = accessToken;
+					if (state.launchApp) {
+						state.launchApp();
 					}
-				);
+					if (successCallback) {
+						successCallback();
+					}
+				},
+				(error) => {
+					if (error) {
+						localMsalApp.loginRedirect(appConfig.scopes);
+					}
+				}
+			);
 		}
 	}
 }
 
 const authentication = {
-	msalApp: null,
 	initialize: (config) => {
 		appConfig = config;
 		const instance = config.instance
 			? config.instance
 			: 'https://login.microsoftonline.com/tfp/';
-		const authority = `https://${instance}/${config.tenant}/${config.signInPolicy}`;
+		const authority = `${instance}${config.tenant}/${config.signInPolicy}`;
+		const validateAuthority =
+			config.validateAuthority != null ? config.validateAuthority : true;
 		let scopes = config.scopes;
 		if (!scopes || scopes.length === 0) {
 			console.log(
@@ -170,36 +156,22 @@ const authentication = {
 			);
 			state.noScopes = true;
 		}
-		state.scopes = [...scopes, 'openid', 'profile'];
+		state.scopes = scopes;
 
-		const msalConfig = {
-			auth: {
-				clientId: config.applicationId,
-				authority: authority,
-				knownAuthorities: [instance],
-				cloudDiscoveryMetadata: '',
-				redirectUri: config.redirectUri,
-				postLogoutRedirectUri: config.postLogoutRedirectUri,
-				navigateToLoginRequestUrl: true,
-				clientCapabilities: ['CP1'],
-			},
-			cache: {
-				cacheLocation: config.cacheLocation,
-				storeAuthStateInCookie: false,
-			},
-			system: {
+		new Msal.UserAgentApplication(
+			config.applicationId,
+			authority,
+			authCallback,
+			{
 				logger: logger,
-				windowHashTimeout: 60000,
-				iframeHashTimeout: 6000,
-				loadFrameTimeout: 0,
-				asyncPopups: false,
-			},
-		};
-
-		authentication.msalApp = new Msal.UserAgentApplication(msalConfig);
+				cacheLocation: config.cacheLocation,
+				postLogoutRedirectUri: config.postLogoutRedirectUri,
+				redirectUri: config.redirectUri,
+				validateAuthority: validateAuthority,
+			}
+		);
 	},
 	run: (launchApp, errorApp) => {
-		console.log('window.msal', window.msal);
 		state.launchApp = launchApp;
 		if (errorApp) state.errorApp = errorApp;
 		if (
@@ -248,6 +220,21 @@ const authentication = {
 	},
 	getUserName: () => {
 		return state.userName;
+	},
+	refreshToken: () => {
+		return localMsalApp.acquireTokenSilent(appConfig.scopes).then(
+			(accessToken) => {
+				state.accessToken = accessToken;
+				if (successCallback) {
+					successCallback();
+				}
+			},
+			(error) => {
+				if (error) {
+					localMsalApp.loginRedirect(appConfig.scopes);
+				}
+			}
+		);
 	},
 };
 
